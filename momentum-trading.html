@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Momentum Stock Trading Strategies Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial/dist/chartjs-chart-financial.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Calm Neutrals -->
+    <!-- Application Structure Plan: The application is designed as a single-page educational tool with a fixed sidebar for navigation and a main content area. This structure was chosen to allow users, especially beginners, to easily switch between and compare different trading strategies without losing context or needing to reload the page. The flow is simple: the user selects a strategy from the sidebar, and the main content area dynamically updates with a detailed explanation, key characteristics, and an interactive Chart.js visualization. This modular, interactive approach enhances learning and retention by breaking down complex information into focused, manageable topics. -->
+    <!-- Visualization & Content Choices: Report Info: Various stock trading patterns. -> Goal: Educate on pattern recognition and entry points. -> Viz/Presentation Method: For each pattern, use a dedicated Chart.js line chart to visualize a clear, annotated example. Accompanying text is structured with headings, lists, and bold text for readability. -> Interaction: User clicks on a strategy in the navigation menu. JavaScript updates the text content and redraws the chart with data specific to the selected strategy. -> Justification: Interactive charts are more engaging and illustrative than static images. Dynamically updating content provides a seamless, app-like experience that is superior to scrolling through a long document. This design directly supports the goal of making complex information easy to explore and understand. -> Library/Method: Chart.js for all visualizations. Vanilla JS for all interactions. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 40vh;
+            max-height: 450px;
+        }
+        .nav-item {
+            transition: all 0.2s ease-in-out;
+        }
+        .nav-item.active {
+            background-color: #e9ecef;
+            color: #0d1b2a;
+            font-weight: 600;
+        }
+        .nav-item:not(.active):hover {
+            background-color: #f1f3f5;
+        }
+        .content-card {
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        #gemini-modal.hidden {
+            display: none;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="antialiased text-gray-800">
+
+    <div class="flex min-h-screen">
+        <aside class="w-64 bg-white border-r border-gray-200 p-6 hidden md:block">
+            <h1 class="text-xl font-bold text-gray-900 mb-6">Trading Strategies</h1>
+            <nav id="nav-menu" class="space-y-2">
+            </nav>
+        </aside>
+
+        <main class="flex-1 p-4 md:p-8 lg:p-12">
+            <div id="mobile-nav-container" class="md:hidden mb-4">
+                <select id="mobile-nav-select" class="w-full p-3 border border-gray-300 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </select>
+            </div>
+
+            <div id="content-area" class="bg-white p-6 md:p-8 rounded-xl content-card">
+            </div>
+        </main>
+    </div>
+
+    <!-- Gemini Modal -->
+    <div id="gemini-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl transform transition-all">
+            <div class="p-6">
+                <div class="flex justify-between items-start">
+                    <h3 class="text-2xl font-semibold text-gray-800" id="gemini-modal-title">✨ Gemini Insights</h3>
+                    <button id="gemini-modal-close" class="text-gray-400 hover:text-gray-600">&times;</button>
+                </div>
+                <div id="gemini-modal-content" class="mt-4 text-gray-700 min-h-[150px]">
+                    <div id="gemini-loading" class="flex flex-col items-center justify-center h-full">
+                        <div class="spinner"></div>
+                        <p class="mt-3 text-gray-500">Generating insights...</p>
+                    </div>
+                    <div id="gemini-response" class="hidden"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        const apiKey = ""; // Canvas will provide this
+
+        const strategies = {
+            'introduction': {
+                title: 'Introduction to Momentum',
+                content: `
+                    <h2 class="text-3xl font-bold text-gray-900 mb-4">Introduction to Momentum Trading</h2>
+                    <p class="mb-6 text-lg text-gray-600">Welcome! This guide is designed to introduce you to several powerful stock trading strategies focused on identifying momentum. The goal is to find stocks that are showing strong upward movement and identify precise entry points to capitalize on that trend. This approach is particularly relevant for dynamic markets like the Bangladesh stock market.</p>
+                    <div class="bg-blue-50 border-l-4 border-blue-500 text-blue-800 p-4 rounded-r-lg mb-6">
+                        <p><span class="font-bold">Core Principle:</span> The fundamental idea behind momentum trading is that stocks which have been performing well are likely to continue performing well in the short to medium term. We use chart patterns to identify moments of consolidation (pauses in the trend) just before the next potential surge in price.</p>
+                    </div>
+
+                    <div class="mt-8 p-6 rounded-lg bg-gray-50 border">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-3">Today's Market Context</h3>
+                        <p class="text-gray-600 mb-4">Get a quick, AI-powered analysis of the current market sentiment for the Dhaka Stock Exchange to better inform your strategy.</p>
+                        <button id="get-market-outlook" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">✨ Get DSE Market Pulse with Gemini</button>
+                        <div id="market-outlook-response" class="mt-4 text-gray-700 bg-white p-4 rounded border hidden"></div>
+                         <div id="market-outlook-loading" class="hidden mt-4 flex items-center text-gray-500"><div class="spinner mr-3"></div><span>Fetching latest market pulse...</span></div>
+                    </div>
+                    
+                    <p class="mt-8 mb-4 text-gray-700">In this guide, you will explore various patterns and strategies. Each section provides a detailed explanation and an interactive chart to illustrate the concept. The key is to learn how to recognize these patterns, understand the psychology behind them, and know how to act on them with a clear plan for entry and risk management.</p>
+                    <p class="text-gray-700">Use the navigation menu to select a strategy and begin your learning journey. Remember, successful trading requires patience, discipline, and continuous learning.</p>
+                `
+            },
+            'vcp': {
+                title: 'Volatility Contraction Pattern (VCP)',
+                content: `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h2 class="text-3xl font-bold text-gray-900 mb-2">Volatility Contraction Pattern (VCP)</h2>
+                            <p class="text-lg text-gray-500 mb-6">Identifying quiet consolidations before a powerful breakout.</p>
+                        </div>
+                        <button class="gemini-summarize-btn inline-flex items-center px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap">✨ Get Key Takeaways</button>
+                    </div>
+                    <div class="chart-container mb-8"><canvas id="strategyChart"></canvas></div>
+                    <div class="grid md:grid-cols-2 gap-8 strategy-text">
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-800 mb-3">What is it?</h3>
+                            <p class="text-gray-700 mb-4">The VCP, popularized by Mark Minervini, is a consolidation pattern that occurs within an uptrend. It's characterized by a series of price contractions where the volatility (the swing from high to low) gets progressively smaller. This "drying up" of volatility and selling pressure often precedes an explosive move upward.</p>
+                            <h3 class="text-xl font-semibold text-gray-800 mb-3">Psychology Behind It</h3>
+                            <p class="text-gray-700">As the pattern forms, weaker holders are shaken out. Each successive pullback is shallower, showing that sellers are losing power and strong hands are accumulating shares. When supply is exhausted, even a small increase in demand can cause the price to break out significantly.</p>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-800 mb-3">How to Trade It</h3>
+                            <ul class="space-y-3 text-gray-700 list-inside list-disc">
+                                <li><strong>Identify an Uptrend:</strong> The stock must already be in a clear, long-term uptrend.</li>
+                                <li><strong>Spot Contractions:</strong> Look for 2-5 pullbacks, with each one being smaller in percentage terms than the last (e.g., 25% -> 15% -> 8%).</li>
+                                <li><strong>Watch Volume:</strong> Volume should generally decrease during the consolidation period, indicating fading selling pressure.</li>
+                                <li><strong>Find the Pivot Point:</strong> The entry point is typically a breakout above the high of the final, tightest contraction area on a significant surge in volume. This confirms buyers are back in control.</li>
+                                <li><strong>Set a Stop-Loss:</strong> Place a stop-loss just below the low of the final contraction to manage risk.</li>
+                            </ul>
+                        </div>
+                    </div>
+                `,
+                chartData: {
+                    labels: Array.from({length: 30}, (_, i) => new Date(2023, 0, i + 1)),
+                    datasets: [{
+                        label: 'Stock Price',
+                        data: [50, 52, 55, 60, 65, 63, 58, 52, 56, 60, 62, 59, 55, 58, 61, 60, 57, 59, 60, 58, 59.5, 62, 68, 75, 72, 78, 80, 85, 83, 88],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                chartOptions: {
+                    plugins: {
+                        title: { display: true, text: 'VCP Example Chart' },
+                        annotation: {
+                            annotations: {
+                                contraction1: { type: 'box', xMin: 5, xMax: 8, yMin: 52, yMax: 65, backgroundColor: 'rgba(255, 99, 132, 0.1)' },
+                                contraction2: { type: 'box', xMin: 10, xMax: 13, yMin: 55, yMax: 62, backgroundColor: 'rgba(255, 159, 64, 0.1)' },
+                                contraction3: { type: 'box', xMin: 15, xMax: 17, yMin: 57, yMax: 61, backgroundColor: 'rgba(255, 205, 86, 0.1)' },
+                                pivot: { type: 'line', yMin: 60, yMax: 60, borderColor: 'rgb(75, 192, 192)', borderWidth: 2, label: { content: 'Pivot/Entry', enabled: true, position: 'start'} },
+                                breakout: { type: 'point', xValue: 21, yValue: 62, backgroundColor: 'rgb(75, 192, 192)', radius: 5, label: { content: 'Breakout', enabled: true } }
+                            }
+                        }
+                    }
+                }
+            },
+            'breakout': {
+                title: 'Base & Breakout Strategy',
+                content: `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h2 class="text-3xl font-bold text-gray-900 mb-2">Base & Breakout Strategy</h2>
+                            <p class="text-lg text-gray-500 mb-6">Entering as a stock clears a key resistance level.</p>
+                        </div>
+                        <button class="gemini-summarize-btn inline-flex items-center px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap">✨ Get Key Takeaways</button>
+                    </div>
+                    <div class="chart-container mb-8"><canvas id="strategyChart"></canvas></div>
+                    <div class="grid md:grid-cols-2 gap-8 strategy-text">
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-800 mb-3">What is it?</h3>
+                            <p class="text-gray-700 mb-4">This is a classic momentum strategy. A "base" is a period of price consolidation (sideways movement) after a prior uptrend. A "breakout" occurs when the stock price moves decisively above the resistance level of that base, signaling a potential continuation of the uptrend.</p>
+                            <h3 class="text-xl font-semibold text-gray-800 mb-3">Psychology Behind It</h3>
+                            <p class="text-gray-700">The base forms as buyers and sellers reach a temporary equilibrium. The resistance level represents a price where sellers have previously stepped in. A breakout on high volume shows that buyers have absorbed all the available supply at that level and are now aggressively pushing the price higher.</p>
+                        </div>
+                        <div>
+                             <h3 class="text-xl font-semibold text-gray-800 mb-3">How to Trade It</h3>
+                            <ul class="space-y-3 text-gray-700 list-inside list-disc">
+                                <li><strong>Find a Base:</strong> Look for a well-defined consolidation pattern (like a flat base, cup and handle, or ascending triangle) after an uptrend. The base should last at least a few weeks.</li>
+                                <li><strong>Identify Resistance:</strong> Draw a horizontal line at the top of the base, connecting the highs. This is the pivot or breakout point.</li>
+                                <li><strong>Wait for the Breakout:</strong> The entry is triggered when the price closes clearly above the resistance line.</li>
+                                <li><strong>Confirm with Volume:</strong> A valid breakout should be accompanied by a significant increase in trading volume, ideally 40-50% or more above average.</li>
+                                <li><strong>Set a Stop-Loss:</strong> Place a stop-loss below the breakout level, often near the midpoint of the base or below the low of the breakout day.</li>
+                                <li><strong>Optional - The Retest:</strong> Sometimes, after a breakout, the price will pull back to "retest" the old resistance level, which should now act as support. This can offer a second, more conservative entry point.</li>
+                            </ul>
+                        </div>
+                    </div>
+                `,
+                chartData: {
+                    labels: Array.from({length: 35}, (_, i) => new Date(2023, 0, i + 1)),
+                    datasets: [{
+                        label: 'Stock Price',
+                        data: [40, 42, 45, 50, 55, 53, 58, 60, 58, 55, 59, 60, 58, 56, 59, 60, 57, 58, 60, 59, 60, 61, 68, 72, 70, 68, 75, 78, 80, 82, 85, 83, 88, 90, 92],
+                        borderColor: '#84cc16',
+                        backgroundColor: 'rgba(132, 204, 22, 0.1)',
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                chartOptions: {
+                    plugins: {
+                        title: { display: true, text: 'Base & Breakout Example' },
+                        annotation: {
+                            annotations: {
+                                base: { type: 'box', xMin: 7, xMax: 21, yMin: 55, yMax: 61, backgroundColor: 'rgba(132, 204, 22, 0.1)' },
+                                resistance: { type: 'line', yMin: 61, yMax: 61, borderColor: '#ef4444', borderWidth: 2, label: { content: 'Resistance/Pivot', enabled: true, position: 'start'} },
+                                breakout: { type: 'point', xValue: 22, yValue: 68, backgroundColor: '#ef4444', radius: 5, label: { content: 'Breakout', enabled: true, position: 'end'} },
+                                retest: { type: 'point', xValue: 25, yValue: 68, backgroundColor: '#3b82f6', radius: 5, label: { content: 'Potential Retest', enabled: true, position: 'start' } }
+                            }
+                        }
+                    }
+                }
+            },
+            'pullback': {
+                title: 'Pullback Strategy',
+                content: `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h2 class="text-3xl font-bold text-gray-900 mb-2">Pullback Strategy</h2>
+                            <p class="text-lg text-gray-500 mb-6">Buying the dip in a strong, established uptrend.</p>
+                        </div>
+                         <button class="gemini-summarize-btn inline-flex items-center px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap">✨ Get Key Takeaways</button>
+                    </div>
+                    <div class="chart-container mb-8"><canvas id="strategyChart"></canvas></div>
+                    <div class="grid md:grid-cols-2 gap-8 strategy-text">
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-800 mb-3">What is it?</h3>
+                            <p class="text-gray-700 mb-4">A pullback is a temporary, short-term move against the primary trend. In a strong uptrend, stocks don't move up in a straight line. They have periods of profit-taking or minor consolidation, which cause the price to dip. The pullback strategy involves buying the stock during this temporary dip in anticipation of the uptrend resuming.</p>
+                            <h3 class="text-xl font-semibold text-gray-800 mb-3">Psychology Behind It</h3>
+                            <p class="text-gray-700">This strategy is based on the idea of "buying low, selling high" within an existing trend. It assumes the primary trend is still strong and the pullback is just a pause, offering a better risk/reward entry point than chasing the stock at its peak. It's a way to join a trend without paying the highest price.</p>
+                        </div>
+                        <div>
+                             <h3 class="text-xl font-semibold text-gray-800 mb-3">How to Trade It</h3>
+                            <ul class="space-y-3 text-gray-700 list-inside list-disc">
+                                <li><strong>Confirm a Strong Uptrend:</strong> The stock must be in a clear and sustained uptrend (making higher highs and higher lows).</li>
+                                <li><strong>Identify a Support Zone:</strong> Pullbacks often find support at key technical levels. Look for the price to pull back to a rising moving average (like the 20 or 50-day), a previous resistance level, or a trendline.</li>
+                                <li><strong>Look for an Entry Signal:</strong> Don't just buy because it hits a level. Wait for a confirmation that the pullback is ending. This could be a bullish candlestick pattern (like a hammer or engulfing candle) or the price starting to turn back up.</li>
+                                <li><strong>Check Volume:</strong> Ideally, the volume during the pullback should be lower than the volume on the up-moves, showing a lack of selling conviction.</li>
+                                <li><strong>Set a Stop-Loss:</strong> Place the stop-loss below the key support level or the low of the entry signal candle.</li>
+                            </ul>
+                        </div>
+                    </div>
+                `,
+                chartData: {
+                    labels: Array.from({length: 40}, (_, i) => new Date(2023, 0, i + 1)),
+                    datasets: [{
+                        label: 'Stock Price',
+                        data: [30, 32, 35, 38, 42, 45, 43, 41, 44, 48, 52, 55, 58, 62, 60, 57, 55, 58, 63, 68, 72, 75, 78, 74, 71, 70, 73, 78, 84, 88, 92, 95, 91, 88, 92, 98, 105, 110, 115, 112],
+                        borderColor: '#a855f7',
+                        tension: 0.1,
+                        pointRadius: 0
+                    }, {
+                        label: '50-Day Moving Average',
+                        data: [null,null,null,null,null,null,null,null,null,null,null,null,null,null,null, 49, 50, 51, 52.5, 54, 56, 58, 60, 62, 64, 65, 66, 68, 70, 72, 75, 78, 80, 82, 84, 86, 89, 92, 95, 98],
+                        borderColor: '#f97316',
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                    }]
+                },
+                 chartOptions: {
+                    plugins: {
+                        title: { display: true, text: 'Pullback to Moving Average Example' },
+                        annotation: {
+                            annotations: {
+                                pullback1: { type: 'ellipse', xMin: 14, xMax: 17, yMin: 55, yMax: 62, backgroundColor: 'rgba(249, 115, 22, 0.1)', label: {content: 'Pullback 1', enabled: true} },
+                                pullback2: { type: 'ellipse', xMin: 23, xMax: 26, yMin: 70, yMax: 78, backgroundColor: 'rgba(249, 115, 22, 0.1)', label: {content: 'Pullback 2', enabled: true} },
+                                pullback3: { type: 'ellipse', xMin: 32, xMax: 34, yMin: 88, yMax: 95, backgroundColor: 'rgba(249, 115, 22, 0.1)', label: {content: 'Pullback 3', enabled: true} },
+                            }
+                        }
+                    }
+                }
+            },
+            'launchpad': {
+                title: 'Launchpad Entry',
+                content: `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h2 class="text-3xl font-bold text-gray-900 mb-2">Launchpad Entry</h2>
+                            <p class="text-lg text-gray-500 mb-6">An early entry technique before the main breakout.</p>
+                        </div>
+                         <button class="gemini-summarize-btn inline-flex items-center px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap">✨ Get Key Takeaways</button>
+                    </div>
+                    <div class="chart-container mb-8"><canvas id="strategyChart"></canvas></div>
+                    <div class="grid md:grid-cols-2 gap-8 strategy-text">
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-800 mb-3">What is it?</h3>
+                            <p class="text-gray-700 mb-4">The Launchpad is a specific type of consolidation that occurs just before a stock is about to make a significant move. It's characterized by the price action getting extremely tight and quiet, often with key moving averages (like the 10, 20, and 50-day) all converging in the same area. This coiling of energy is the "launchpad" for the next move.</p>
+                            <h3 class="text-xl font-semibold text-gray-800 mb-3">Psychology Behind It</h3>
+                            <p class="text-gray-700">This pattern represents a moment of perfect equilibrium between buyers and sellers. Volatility has dried up, and the stock is trading in a very narrow range. This indicates that a decisive move is imminent. The direction of the break from this tight range is likely to be the direction of the next significant trend.</p>
+                        </div>
+                        <div>
+                             <h3 class="text-xl font-semibold text-gray-800 mb-3">How to Trade It</h3>
+                            <ul class="space-y-3 text-gray-700 list-inside list-disc">
+                                <li><strong>Find a Consolidating Stock:</strong> Look for a stock that has been basing or moving sideways after a prior uptrend.</li>
+                                <li><strong>Check Moving Averages:</strong> The key signal is the convergence of short-term and medium-term moving averages. They should be flattening out and bunching up close to the current price.</li>
+                                <li><strong>Observe Price Tightness:</strong> The daily price ranges should become very narrow. The stock appears "quiet" or "boring."</li>
+                                <li><strong>Entry Signal:</strong> The entry is taken as the price breaks out of this very tight range with a noticeable increase in volume. You are anticipating the larger breakout from the overall base.</li>
+                                <li><strong>Set a Stop-Loss:</strong> The advantage of the launchpad is the low risk. A tight stop-loss can be placed just below the low of the consolidation range.</li>
+                            </ul>
+                        </div>
+                    </div>
+                `,
+                chartData: {
+                    labels: Array.from({length: 40}, (_, i) => new Date(2023, 3, i + 1)),
+                    datasets: [{
+                        label: 'Stock Price',
+                        data: [70, 72, 75, 78, 82, 80, 78, 75, 77, 79, 81, 80, 78, 76, 75, 77, 79, 80, 79, 78, 79, 78.5, 79.5, 79, 78.8, 79.2, 80, 85, 90, 95, 93, 98, 102, 105, 103, 108, 110, 115, 112, 118],
+                        borderColor: '#10b981',
+                        tension: 0.1,
+                    }, {
+                        label: '10-Day MA',
+                        data: [null,null,null,null,null,null,null,null,null,76.5,77.4,78.2,78.5,78.3,77.7,77.5,77.9,78.5,78.8,78.8,78.8,78.8,79.0,79.0,79.0,79.0,79.2,80.7,83.7,87.2,89.5,92.8,96.3,99.8,101.6,104.4,106.7,109.7,110.9,113.2],
+                        borderColor: '#f97316',
+                        pointRadius: 0,
+                    },{
+                        label: '20-Day MA',
+                        data: [null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,77.9,78,78.1,78.2,78.3,78.4,78.5,78.6,79,80,81.2,82.5,84.1,85.9,88,90,92.2,94.5,97,99.2,101.7],
+                        borderColor: '#3b82f6',
+                        pointRadius: 0,
+                    }]
+                },
+                 chartOptions: {
+                    plugins: {
+                        title: { display: true, text: 'Launchpad Entry Example' },
+                        annotation: {
+                            annotations: {
+                                launchpad: { type: 'box', xMin: 18, xMax: 26, yMin: 78, yMax: 80, backgroundColor: 'rgba(16, 185, 129, 0.1)', label: {content: 'Launchpad Area - Tight Consolidation', enabled: true} },
+                                breakout: { type: 'point', xValue: 27, yValue: 85, backgroundColor: 'rgb(16, 185, 129)', radius: 5, label: { content: 'Breakout', enabled: true, position: 'end'} },
+                            }
+                        }
+                    }
+                }
+            },
+            'insidebar': {
+                title: 'Inside Bar Strategy',
+                content: `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h2 class="text-3xl font-bold text-gray-900 mb-2">Inside Bar Strategy</h2>
+                            <p class="text-lg text-gray-500 mb-6">A two-bar pattern signaling consolidation and a potential breakout.</p>
+                        </div>
+                         <button class="gemini-summarize-btn inline-flex items-center px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap">✨ Get Key Takeaways</button>
+                    </div>
+                    <div class="chart-container mb-8"><canvas id="strategyChart"></canvas></div>
+                    <div class="grid md:grid-cols-2 gap-8 strategy-text">
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-800 mb-3">What is it?</h3>
+                            <p class="text-gray-700 mb-4">An inside bar is a candlestick pattern where one bar's entire price range (high to low) is contained within the range of the preceding bar (the "mother bar"). It's a simple yet powerful pattern indicating a temporary pause or indecision in the market.</p>
+                            <h3 class="text-xl font-semibold text-gray-800 mb-3">Psychology Behind It</h3>
+                            <p class="text-gray-700">The mother bar represents a period of strong directional movement. The inside bar shows that volatility has decreased and neither buyers nor sellers are in full control. This coiling of energy often resolves with a "breakout" from the mother bar's range as the market decides on its next direction.</p>
+                        </div>
+                        <div>
+                             <h3 class="text-xl font-semibold text-gray-800 mb-3">How to Trade It (Continuation)</h3>
+                            <ul class="space-y-3 text-gray-700 list-inside list-disc">
+                                <li><strong>Find a Trending Market:</strong> This strategy works best as a continuation pattern. Look for an inside bar that forms during a clear uptrend.</li>
+                                <li><strong>Identify the Pattern:</strong> Spot a candle (inside bar) that is completely engulfed by the previous candle (mother bar).</li>
+                                <li><strong>Set Entry Orders:</strong> Place a buy stop order just above the high of the mother bar. This ensures you only enter the trade if the price breaks out in the direction of the trend.</li>
+                                <li><strong>Volume Confirmation:</strong> The breakout from the mother bar's high should ideally occur on increased volume.</li>
+                                <li><strong>Set a Stop-Loss:</strong> A common stop-loss placement is just below the low of the mother bar, defining your risk clearly.</li>
+                            </ul>
+                        </div>
+                    </div>
+                `,
+                chartData: {
+                    labels: ['Day 1', 'Day 2', 'Day 3 (Mother)', 'Day 4 (Inside)', 'Day 5', 'Day 6', 'Day 7'],
+                    datasets: [{
+                        label: 'Candlestick Data',
+                        data: [
+                            {x: new Date(2023, 1, 1).valueOf(), o: 100, h: 105, l: 99, c: 104},
+                            {x: new Date(2023, 1, 2).valueOf(), o: 104, h: 109, l: 103, c: 108},
+                            {x: new Date(2023, 1, 3).valueOf(), o: 108, h: 115, l: 107, c: 114}, // Mother Bar
+                            {x: new Date(2023, 1, 4).valueOf(), o: 112, h: 114, l: 109, c: 111}, // Inside Bar
+                            {x: new Date(2023, 1, 5).valueOf(), o: 114, h: 120, l: 113, c: 119}, // Breakout
+                            {x: new Date(2023, 1, 6).valueOf(), o: 119, h: 125, l: 118, c: 124},
+                            {x: new Date(2023, 1, 7).valueOf(), o: 124, h: 130, l: 123, c: 129},
+                        ],
+                    }]
+                },
+                 chartOptions: {
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: { unit: 'day' }
+                        },
+                        y: {
+                           beginAtZero: false,
+                           min: 95,
+                           max: 135
+                        }
+                    },
+                    plugins: {
+                        tooltip: { enabled: true },
+                        title: { display: true, text: 'Inside Bar Breakout Example' },
+                        annotation: {
+                            annotations: {
+                                motherBarHigh: { type: 'line', xMin: new Date(2023, 1, 3).valueOf(), xMax: new Date(2023, 1, 5).valueOf(), yMin: 115, yMax: 115, borderColor: '#3b82f6', borderWidth: 2, borderDash: [6, 6], label: { content: 'Mother Bar High (Entry)', enabled: true, position: 'end'} },
+                                motherBarLow: { type: 'line', xMin: new Date(2023, 1, 3).valueOf(), xMax: new Date(2023, 1, 5).valueOf(), yMin: 107, yMax: 107, borderColor: '#ef4444', borderWidth: 2, borderDash: [6, 6], label: { content: 'Mother Bar Low (Stop)', enabled: true, position: 'end'} },
+                                motherBarBox: { type: 'box', xMin: new Date(2023, 1, 3).valueOf() - 12*60*60*1000, xMax: new Date(2023, 1, 3).valueOf() + 12*60*60*1000, backgroundColor: 'rgba(0,0,0,0.0)', label: { content: 'Mother', enabled: true, position: 'start'}},
+                                insideBarBox: { type: 'box', xMin: new Date(2023, 1, 4).valueOf() - 12*60*60*1000, xMax: new Date(2023, 1, 4).valueOf() + 12*60*60*1000, backgroundColor: 'rgba(0,0,0,0.0)', label: { content: 'Inside', enabled: true, position: 'start'}},
+                            }
+                        }
+                    }
+                },
+                isCandlestick: true,
+            },
+        };
+
+        let currentChart = null;
+
+        const geminiModal = document.getElementById('gemini-modal');
+        const geminiModalClose = document.getElementById('gemini-modal-close');
+        const geminiLoading = document.getElementById('gemini-loading');
+        const geminiResponse = document.getElementById('gemini-response');
+
+        geminiModalClose.addEventListener('click', () => geminiModal.classList.add('hidden'));
+
+        async function callGemini(prompt, useGrounding = false, systemPrompt = "") {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+            };
+
+            if (useGrounding) {
+                payload.tools = [{ "google_search": {} }];
+            }
+
+            if(systemPrompt) {
+                payload.systemInstruction = { parts: [{ text: systemPrompt }] };
+            }
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API call failed with status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (text) {
+                    return text;
+                } else {
+                   return "Sorry, I couldn't generate a response. Please try again.";
+                }
+            } catch (error) {
+                console.error("Gemini API call error:", error);
+                return "An error occurred while contacting the Gemini API. Please check the console for details.";
+            }
+        }
+
+
+        function setupGeminiButtons() {
+            const summarizeBtn = document.querySelector('.gemini-summarize-btn');
+            if (summarizeBtn) {
+                summarizeBtn.addEventListener('click', async () => {
+                    geminiResponse.innerHTML = '';
+                    geminiResponse.classList.add('hidden');
+                    geminiLoading.style.display = 'flex';
+                    geminiModal.classList.remove('hidden');
+
+                    const strategyTextElement = document.querySelector('.strategy-text');
+                    const strategyText = strategyTextElement ? strategyTextElement.innerText : '';
+                    const systemPrompt = "You are a helpful trading coach. Summarize the following trading strategy in 3-4 bullet points for a beginner. Focus on the core concept, the entry trigger, and the risk management (stop-loss).";
+                    const result = await callGemini(strategyText, false, systemPrompt);
+
+                    geminiResponse.innerHTML = result.replace(/\n/g, '<br>');
+                    geminiLoading.style.display = 'none';
+                    geminiResponse.classList.remove('hidden');
+                });
+            }
+            
+            const marketOutlookBtn = document.getElementById('get-market-outlook');
+            if (marketOutlookBtn) {
+                marketOutlookBtn.addEventListener('click', async () => {
+                    const responseDiv = document.getElementById('market-outlook-response');
+                    const loadingDiv = document.getElementById('market-outlook-loading');
+
+                    responseDiv.classList.add('hidden');
+                    loadingDiv.style.display = 'flex';
+                    marketOutlookBtn.disabled = true;
+
+                    const prompt = "Act as a financial analyst. Provide a brief, one-paragraph analysis of the current market sentiment and key trends for the Dhaka Stock Exchange (DSE) based on the latest available news and data. Focus on momentum.";
+                    const result = await callGemini(prompt, true);
+                    
+                    responseDiv.innerHTML = result;
+                    loadingDiv.style.display = 'none';
+                    responseDiv.classList.remove('hidden');
+                    marketOutlookBtn.disabled = false;
+                });
+            }
+        }
+
+
+        function updateContent(strategyKey) {
+            const strategy = strategies[strategyKey];
+            const contentArea = document.getElementById('content-area');
+            contentArea.innerHTML = strategy.content;
+
+            document.querySelectorAll('#nav-menu .nav-item').forEach(item => {
+                item.classList.toggle('active', item.dataset.strategy === strategyKey);
+            });
+            
+            const mobileSelect = document.getElementById('mobile-nav-select');
+            if (mobileSelect.value !== strategyKey) {
+                mobileSelect.value = strategyKey;
+            }
+
+            if (strategy.chartData) {
+                const ctx = document.getElementById('strategyChart').getContext('2d');
+                if (currentChart) {
+                    currentChart.destroy();
+                }
+
+                const chartType = strategy.isCandlestick ? 'candlestick' : 'line';
+                
+                const annotationPlugin = {
+                    id: 'annotation',
+                    beforeDraw(chart, args, options) {
+                        if (!options || !options.annotations) { return; }
+                        const { ctx, chartArea: { top, right, bottom, left }, scales: { x, y } } = chart;
+                        ctx.save();
+                        
+                        Object.values(options.annotations).forEach(annotation => {
+                            ctx.beginPath();
+                            ctx.strokeStyle = annotation.borderColor || 'black';
+                            ctx.lineWidth = annotation.borderWidth || 1;
+                            ctx.fillStyle = annotation.backgroundColor || 'transparent';
+                            if(annotation.borderDash) ctx.setLineDash(annotation.borderDash);
+                            
+                            if (annotation.type === 'line') {
+                                const yValue = y.getPixelForValue(annotation.yMin);
+                                const xMin = x.getPixelForValue(annotation.xMin);
+                                const xMax = x.getPixelForValue(annotation.xMax);
+                                ctx.moveTo(xMin, yValue);
+                                ctx.lineTo(xMax, yValue);
+                                ctx.stroke();
+                            } else if (annotation.type === 'box') {
+                                const xMin = x.getPixelForValue(annotation.xMin);
+                                const xMax = x.getPixelForValue(annotation.xMax);
+                                const yMin = y.getPixelForValue(annotation.yMax);
+                                const yMax = y.getPixelForValue(annotation.yMin);
+                                ctx.fillStyle = annotation.backgroundColor || 'transparent';
+                                ctx.fillRect(xMin, yMin, xMax - xMin, yMax - yMin);
+                                if (annotation.borderColor) {
+                                    ctx.strokeStyle = annotation.borderColor;
+                                    ctx.strokeRect(xMin, yMin, xMax - xMin, yMax - yMin);
+                                }
+                            } else if(annotation.type === 'point') {
+                                ctx.fillStyle = annotation.backgroundColor || 'black';
+                                const px = x.getPixelForValue(annotation.xValue);
+                                const py = y.getPixelForValue(annotation.yValue);
+                                ctx.arc(px, py, annotation.radius || 5, 0, 2 * Math.PI);
+                                ctx.fill();
+                            } else if (annotation.type === 'ellipse') {
+                                ctx.fillStyle = annotation.backgroundColor || 'transparent';
+                                const xMin = x.getPixelForValue(annotation.xMin);
+                                const xMax = x.getPixelForValue(annotation.xMax);
+                                const yMin = y.getPixelForValue(annotation.yMax);
+                                const yMax = y.getPixelForValue(annotation.yMin);
+                                const centerX = (xMin + xMax) / 2;
+                                const centerY = (yMin + yMax) / 2;
+                                const radiusX = (xMax - xMin) / 2;
+                                const radiusY = (yMax - yMin) / 2;
+                                ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+                                ctx.fill();
+                            }
+
+                            if(annotation.label && annotation.label.enabled) {
+                                ctx.fillStyle = 'black';
+                                ctx.font = '12px Inter';
+                                ctx.textAlign = annotation.label.position === 'start' ? 'left' : 'right';
+                                if (annotation.type === 'line') {
+                                    ctx.fillText(annotation.label.content, annotation.label.position === 'start' ? x.getPixelForValue(annotation.xMin) + 5 : x.getPixelForValue(annotation.xMax) - 5, y.getPixelForValue(annotation.yMin) - 5);
+                                }
+                            }
+                            ctx.setLineDash([]);
+                        });
+
+                        ctx.restore();
+                    }
+                };
+                
+                const customPlugins = strategy.chartOptions && strategy.chartOptions.plugins && strategy.chartOptions.plugins.annotation ? [annotationPlugin] : [];
+
+                if (strategy.isCandlestick) {
+                   currentChart = new Chart(ctx, {
+                        type: 'candlestick',
+                        data: {
+                            datasets: [{
+                                label: strategy.chartData.datasets[0].label,
+                                data: strategy.chartData.datasets[0].data,
+                            }]
+                        },
+                        options: {
+                            ...strategy.chartOptions,
+                            responsive: true,
+                            maintainAspectRatio: false,
+                        },
+                        plugins: customPlugins
+                   });
+                } else {
+                    currentChart = new Chart(ctx, {
+                        type: 'line',
+                        data: strategy.chartData,
+                        options: {
+                            ...strategy.chartOptions,
+                            scales: {
+                                x: {
+                                    type: 'time',
+                                    time: { unit: 'day' }
+                                }
+                            },
+                            responsive: true,
+                            maintainAspectRatio: false,
+                        },
+                        plugins: customPlugins
+                    });
+                }
+            }
+            setupGeminiButtons();
+        }
+
+        function init() {
+            const navMenu = document.getElementById('nav-menu');
+            const mobileNavSelect = document.getElementById('mobile-nav-select');
+
+            Object.keys(strategies).forEach(key => {
+                const strategy = strategies[key];
+                
+                const navItem = document.createElement('a');
+                navItem.href = '#';
+                navItem.textContent = strategy.title;
+                navItem.dataset.strategy = key;
+                navItem.className = 'nav-item block px-4 py-2 rounded-lg text-gray-700';
+                navMenu.appendChild(navItem);
+
+                const optionItem = document.createElement('option');
+                optionItem.value = key;
+                optionItem.textContent = strategy.title;
+                mobileNavSelect.appendChild(optionItem);
+            });
+
+            navMenu.addEventListener('click', (e) => {
+                if (e.target.tagName === 'A') {
+                    e.preventDefault();
+                    updateContent(e.target.dataset.strategy);
+                }
+            });
+
+            mobileNavSelect.addEventListener('change', (e) => {
+                updateContent(e.target.value);
+            });
+
+            updateContent('introduction');
+        }
+
+        init();
+    </script>
+</body>
+</html>
+
+
+
